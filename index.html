@@ -4,53 +4,93 @@
     <title>Mafia Dealer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: -apple-system, sans-serif; padding: 20px; line-height: 1.6; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; }
-        button { background: #007AFF; color: white; font-weight: bold; border: none; }
-        .counter { font-size: 0.9em; color: #666; }
+        body { font-family: -apple-system, sans-serif; padding: 20px; background: #f0f2f5; color: #1c1e21; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        h2 { margin-top: 0; color: #007AFF; }
+        textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
+        button { width: 100%; padding: 15px; background: #007AFF; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        button:active { background: #0056b3; }
+        .decoder { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #eee; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; margin-top: 10px; }
+        #revealResult { font-weight: bold; margin-top: 15px; text-align: center; min-height: 24px; color: #007AFF; }
     </style>
 </head>
 <body>
-    <h2>Mafia Role Dealer</h2>
-    <div id="setup">
-        <p class="counter">Roles: 1 Mafia, 1 Doctor, Rest Villagers</p>
-        <textarea id="numbers" placeholder="Enter phone numbers (one per line)" rows="5" style="width:100%"></textarea>
-        <button onclick="distributeRoles()">Send Roles Blindly</button>
+
+<div class="card">
+    <h2>Mafia Dealer 🔪</h2>
+    <p style="font-size: 14px; color: #65676b;">Enter numbers (one per line):</p>
+    <textarea id="numbers" rows="5" placeholder="5551234567&#10;5550001111"></textarea>
+    
+    <button onclick="distributeRoles()">Send Next Role</button>
+    <p id="status" style="font-size: 12px; color: #888; text-align: center;"></p>
+
+    <div class="decoder">
+        <h3>Role Decoder</h3>
+        <p style="font-size: 14px; color: #65676b;">Paste your text here to see your role:</p>
+        <input type="text" id="revealInput" placeholder="Paste here..." oninput="revealRole()">
+        <div id="revealResult"></div>
     </div>
+</div>
 
-    <script>
-        // Maps characters to invisible Unicode equivalents
-        const invisibleMap = {
-            'M': '\u200B', // Zero Width Space
-            'D': '\u200C', // Zero Width Non-Joiner
-            'V': '\u200D'  // Zero Width Joiner
-        };
+<script>
+    // These are invisible Unicode characters
+    const M_CODE = '\u200B'; // Mafia
+    const D_CODE = '\u200C'; // Doctor
+    const V_CODE = '\u200D'; // Villager
 
-        async function distributeRoles() {
-            const lines = document.getElementById('numbers').value.split('\n').filter(n => n.trim() !== "");
-            if (lines.length < 2) return alert("Need at least 3 players!");
+    let gameRoles = [];
+    let playerList = [];
+    let currentIndex = 0;
 
-            let roles = ['M', 'D']; 
-            while (roles.length < lines.length) roles.push('V');
-            roles = roles.sort(() => Math.random() - 0.5);
+    function distributeRoles() {
+        // Only initialize the game if we haven't started or if we finished the last one
+        if (currentIndex === 0) {
+            const input = document.getElementById('numbers').value.trim();
+            if (!input) return alert("Please enter numbers first!");
+            
+            playerList = input.split('\n').map(n => n.trim());
+            
+            // Build role deck: 1 Mafia, 1 Doctor, rest Villagers
+            gameRoles = [M_CODE, D_CODE];
+            while (gameRoles.length < playerList.length) {
+                gameRoles.push(V_CODE);
+            }
+            
+            // Shuffle
+            gameRoles.sort(() => Math.random() - 0.5);
+        }
 
-            for (let i = 0; i < lines.length; i++) {
-                const roleCode = invisibleMap[roles[i]];
-                const message = "Game Started! " + roleCode; // The role is at the end but invisible
-                
-                // Using Web Share API to trigger the native SMS app
-                if (navigator.share) {
-                    await navigator.share({
-                        text: message,
-                        url: '' // Keep empty to avoid clutter
-                    }).catch(console.error);
-                } else {
-                    window.open(`sms:${lines[i]}?&body=${encodeURIComponent(message)}`);
-                }
-                // Small delay to prevent browser freezing
-                await new Promise(r => setTimeout(r, 500));
+        if (currentIndex < playerList.length) {
+            const number = playerList[currentIndex];
+            const role = gameRoles[currentIndex];
+            const message = "Game Started! " + role;
+            
+            // Use the direct SMS link. This avoids the "Share" menu and the URL attachment.
+            // encodeURIComponent ensures the invisible character is preserved in the link.
+            window.location.href = `sms:${number}?&body=${encodeURIComponent(message)}`;
+            
+            currentIndex++;
+            document.getElementById('status').innerText = `Sent ${currentIndex} of ${playerList.length}`;
+            
+            if (currentIndex === playerList.length) {
+                document.getElementById('status').innerText = "All roles sent! Refresh to restart.";
+                currentIndex = 0; // Reset for next game
             }
         }
-    </script>
+    }
+
+    function revealRole() {
+        const val = document.getElementById('revealInput').value;
+        const display = document.getElementById('revealResult');
+        
+        if (val.includes(M_CODE)) display.innerText = "YOU ARE: MAFIA 🔪";
+        else if (val.includes(D_CODE)) display.innerText = "YOU ARE: DOCTOR 🩺";
+        else if (val.includes(V_CODE)) display.innerText = "YOU ARE: VILLAGER 🧑‍🌾";
+        else if (val.length > 0) display.innerText = "No hidden role found!";
+        else display.innerText = "";
+    }
+</script>
+
 </body>
 </html>
