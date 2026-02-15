@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mafia Dealer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: -apple-system, sans-serif; padding: 20px; line-height: 1.6; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; }
+        button { background: #007AFF; color: white; font-weight: bold; border: none; }
+        .counter { font-size: 0.9em; color: #666; }
+    </style>
+</head>
+<body>
+    <h2>Mafia Role Dealer</h2>
+    <div id="setup">
+        <p class="counter">Roles: 1 Mafia, 1 Doctor, Rest Villagers</p>
+        <textarea id="numbers" placeholder="Enter phone numbers (one per line)" rows="5" style="width:100%"></textarea>
+        <button onclick="distributeRoles()">Send Roles Blindly</button>
+    </div>
+
+    <script>
+        // Maps characters to invisible Unicode equivalents
+        const invisibleMap = {
+            'M': '\u200B', // Zero Width Space
+            'D': '\u200C', // Zero Width Non-Joiner
+            'V': '\u200D'  // Zero Width Joiner
+        };
+
+        async function distributeRoles() {
+            const lines = document.getElementById('numbers').value.split('\n').filter(n => n.trim() !== "");
+            if (lines.length < 3) return alert("Need at least 3 players!");
+
+            let roles = ['M', 'D']; 
+            while (roles.length < lines.length) roles.push('V');
+            roles = roles.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < lines.length; i++) {
+                const roleCode = invisibleMap[roles[i]];
+                const message = "Game Started! " + roleCode; // The role is at the end but invisible
+                
+                // Using Web Share API to trigger the native SMS app
+                if (navigator.share) {
+                    await navigator.share({
+                        text: message,
+                        url: '' // Keep empty to avoid clutter
+                    }).catch(console.error);
+                } else {
+                    window.open(`sms:${lines[i]}?&body=${encodeURIComponent(message)}`);
+                }
+                // Small delay to prevent browser freezing
+                await new Promise(r => setTimeout(r, 500));
+            }
+        }
+    </script>
+</body>
+</html>
