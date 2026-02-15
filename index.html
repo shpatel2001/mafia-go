@@ -28,7 +28,7 @@
 
         async function distributeRoles() {
             const lines = document.getElementById('numbers').value.split('\n').filter(n => n.trim() !== "");
-            if (lines.length < 3) return alert("Need at least 3 players!");
+            if (lines.length < 2) return alert("Need at least 3 players!");
 
             let roles = ['M', 'D']; 
             while (roles.length < lines.length) roles.push('V');
